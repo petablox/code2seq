@@ -38,6 +38,7 @@ Table of Contents
 > python3 -c 'import tensorflow as tf; print(tf.\_\_version\_\_)'
   * For [creating a new Java dataset](#creating-and-preprocessing-a-new-java-dataset) or [manually examining a trained model](#step-4-manual-examination-of-a-trained-model) (any operation that requires parsing of a new code example): [JDK](https://openjdk.java.net/install/)
   * For creating a C# dataset: [dotnet-core](https://dotnet.microsoft.com/download) version 2.2 or newer.
+  * `pip install rouge` for computing rouge scores.
 
 ## Quickstart
 ### Step 0: Cloning this repository
@@ -176,6 +177,18 @@ This will save a copy of the trained model with the '.release' suffix.
 A "released" model usually takes ~3x less disk space.
 
 ## Extending to other languages  
+
+This project currently supports Java and C\# as the input languages.
+
+_**January 2020** - a code2seq extractor for Python (specifically targeting the Python150k dataset) was contributed by [@stasbel](https://github.com/stasbel). See: [https://github.com/tech-srl/code2seq/tree/master/Python150kExtractor](https://github.com/tech-srl/code2seq/tree/master/Python150kExtractor)._
+
+_**January 2020** - an extractor for predicting TypeScript type annotations for JavaScript input using code2vec was developed by [@izosak](https://github.com/izosak) and Noa Cohen, and is available here:
+[https://github.com/tech-srl/id2vec](https://github.com/tech-srl/id2vec)._
+
+~~_**June 2019** - an extractor for **C** that is compatible with our model was developed by [CMU SEI team](https://github.com/cmu-sei/code2vec-c)._~~ - removed by CMU SEI team.
+
+_**June 2019** - a code2vec extractor for **Python, Java, C, C++** by JetBrains Research is available here: [PathMiner](https://github.com/JetBrains-Research/astminer)._
+
 To extend code2seq to other languages other than Java and C#, a new extractor (similar to the [JavaExtractor](JavaExtractor))
 should be implemented, and be called by [preprocess.sh](preprocess.sh).
 Basically, an extractor should be able to output for each directory containing source files:
