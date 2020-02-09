@@ -77,6 +77,7 @@ public final class Common {
             	int numberOfFiles = Utils.getNumberOfFiles(outputPath);
             	String newCodePath = outputPath + numberOfFiles + ".java";
                 Common.writeSourceCode(md, newCodePath);                            	
+		Utils.incrementNumberOfFiles(outputPath);
             }
         }, null);        
     }
@@ -99,9 +100,14 @@ public final class Common {
     static void writeSourceCode(MethodDeclaration md, String codePath) {
     	
         try (PrintStream ps = new PrintStream(codePath)) {
+	    if (md.isDefault()){
+		md.setDefault(false);
+	    }
+
             String tfSourceCode = md.toString();
             String surroundingClassDef = "class AABBCC { \n\n" + tfSourceCode + "\n\n}";
             ps.println(surroundingClassDef);
+
         } catch (FileNotFoundException ex) {
             ex.printStackTrace();
         }        

@@ -1,7 +1,9 @@
 package method_analyzer;
 
 import java.io.File;
+import java.lang.Character;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Scanner; 
@@ -23,6 +25,7 @@ public class MethodLines extends VoidVisitorAdapter<Object> {
 
 	private ArrayList<Node> rem = new ArrayList<>();
 	public static ArrayList<String> acceptedNames = new ArrayList<>();
+	public static boolean seq;
 
 	MethodLines() { }
 
@@ -57,17 +60,52 @@ public class MethodLines extends VoidVisitorAdapter<Object> {
 		super.visit(com, obj);
 	}
 
+	private ArrayList<String> splitNameByToken(String name) {
+		char prev = '0';
+		String token = "";
+		ArrayList<String> tokens = new ArrayList<String>();
+
+		for( int i =0; i < name.length(); i++){
+			char c = name.charAt(i);
+			if (i > 0 && ((Character.isUpperCase(c) && Character.isLowerCase(prev)) || c == '_') && token.length() > 0) {
+				tokens.add(token);
+				token = "";	
+			}
+
+			prev = c;
+			token += c;
+		}	
+
+		if (token.length() > 0){
+			tokens.add(token);
+		}
+
+		return tokens;
+	}
+
 	private void locateTargetStatements(CompilationUnit com, Object obj) {
 		new TreeVisitor() {
 			@Override
 			public void process(Node node) {
+				if (node instanceof MethodDeclaration){
 
-				if (node instanceof MethodDeclaration && !acceptedNames.contains(((MethodDeclaration)node).getNameAsString())) {
-					//System.out.println("Removing method with name " + "|" + ((MethodDeclaration)node).getName() + "|");
-					rem.add(node);
+					MethodDeclaration md  = (MethodDeclaration) node;
+					String node_name = md.getNameAsString();
+
+					ArrayList<String> names = MethodLines.seq ? splitNameByToken(node_name) : new ArrayList<String>(Arrays.asList(node_name));
+
+					for (int i=0; i<names.size(); i++) {
+						String token = names.get(i);
+						if(!acceptedNames.contains(token)){
+							rem.add(node);
+							break;
+						}
+					}
+
 				}
 			}
-		}.visitBreadthFirst(com);
+	     }.visitBreadthFirst(com);
+
 	}
 
 	private void applyManager(CompilationUnit com) {
@@ -83,10 +121,12 @@ public class MethodLines extends VoidVisitorAdapter<Object> {
 	}
 
 	public static void main(String[] args){
-		String inPath = "/data2/edinella/java-small/";
-		Common.outputPath = "/data2/edinella/java-small-clean-mp/";
+		String inPath = "/data2/edinella/java-small-og/";
+		Common.outputPath = "/data2/edinella/java-small-clean-seq/";
 
-		MethodLines.set_clean_names("/home/edinella/clean_names.txt");
+		MethodLines.seq = false;
+
+		MethodLines.set_clean_names("/home/edinella/clean_seqs.txt");
 
 		File programFolder = new File(inPath);
 
@@ -100,8 +140,5 @@ public class MethodLines extends VoidVisitorAdapter<Object> {
 		}
 
 		executor.shutdown();
-		while (!executor.isTerminated()) {
-		}
-
 	}
 }
