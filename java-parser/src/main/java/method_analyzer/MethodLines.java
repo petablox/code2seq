@@ -84,28 +84,32 @@ public class MethodLines extends VoidVisitorAdapter<Object> {
 	}
 
 	private void locateTargetStatements(CompilationUnit com, Object obj) {
+	try{
 		new TreeVisitor() {
-			@Override
-			public void process(Node node) {
-				if (node instanceof MethodDeclaration){
+				@Override
+				public void process(Node node) {
+					if (node instanceof MethodDeclaration){
 
-					MethodDeclaration md  = (MethodDeclaration) node;
-					String node_name = md.getNameAsString();
+						MethodDeclaration md  = (MethodDeclaration) node;
+						String node_name = md.getNameAsString();
 
-					ArrayList<String> names = MethodLines.seq ? splitNameByToken(node_name) : new ArrayList<String>(Arrays.asList(node_name));
+						ArrayList<String> names = MethodLines.seq ? splitNameByToken(node_name) : new ArrayList<String>(Arrays.asList(node_name));
 
-					for (int i=0; i<names.size(); i++) {
-						String token = names.get(i);
-						if(!acceptedNames.contains(token)){
-							rem.add(node);
-							break;
+						for (int i=0; i<names.size(); i++) {
+							String token = names.get(i);
+							if(!acceptedNames.contains(token)){
+								rem.add(node);
+								break;
+							}
 						}
-					}
 
+					}
 				}
-			}
 	     }.visitBreadthFirst(com);
 
+	}catch(Exception e){
+		System.out.println(e);
+	}
 	}
 
 	private void applyManager(CompilationUnit com) {
@@ -121,12 +125,12 @@ public class MethodLines extends VoidVisitorAdapter<Object> {
 	}
 
 	public static void main(String[] args){
-		String inPath = "/data2/edinella/java-small-og/";
-		Common.outputPath = "/data2/edinella/java-small-clean-seq/";
+		String inPath = "/data2/edinella/java-large/";
+		Common.outputPath = "/data2/edinella/java-large-clean/";
 
 		MethodLines.seq = false;
 
-		MethodLines.set_clean_names("/home/edinella/clean_seqs.txt");
+		MethodLines.set_clean_names("/home/edinella/clean_names.txt");
 
 		File programFolder = new File(inPath);
 
