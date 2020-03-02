@@ -17,7 +17,7 @@ import java.util.concurrent.ExecutionException;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.Range;
 import com.github.javaparser.ast.Node;
-import com.github.javaparser.ast.expr.VariableDeclarationExpr;
+import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.expr.SimpleName;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.visitor.TreeVisitor;
@@ -30,21 +30,26 @@ public class MethodLines extends VoidVisitorAdapter<Object> {
 
     private ArrayList<Node> rem = new ArrayList<>();
     public static ArrayList<String> acceptedNames = new ArrayList<>();
-    private static File logFile;
-    public static FileWriter fr;
     public static boolean seq;
     
     private String typeToTarget;
     private String javaFilePath;
+    private File logFile;
+    private FileWriter fr;
 
-    MethodLines(String typeToTarget) { 
+    MethodLines(String typeToTarget, String logFile) { 
         this.typeToTarget = typeToTarget; 
+        /*
+        this.logFile = new File(logFile);
+
+        try {
+            this.fr = new FileWriter(logFile, true);
+        } catch (java.io.IOException e) {
+            System.out.println("file " + logFile + " invalid");
+        }
+        */
     }
 
-    public static void setLogPath(String path) throws IOException {
-        MethodLines.logFile = new File(path);
-        MethodLines.fr = new FileWriter(MethodLines.logFile, true); 
-    }
 
     public static void set_clean_names(String fname) {
         File accNamesFile = new File(fname);
@@ -70,7 +75,18 @@ public class MethodLines extends VoidVisitorAdapter<Object> {
         if (root != null) {
             this.visit(root.clone(), null);
         }
+    
+        /*
+        try { 
+            this.fr.close();
+            System.out.println("Closed file");
+            return;
+        } catch (IOException e) {
+            System.out.println("Can't close file");
+       } 
+        */
     }
+
 
     @Override
         public void visit(CompilationUnit com, Object obj) {
@@ -108,8 +124,8 @@ public class MethodLines extends VoidVisitorAdapter<Object> {
             case "MethodDeclaration":
                 return (node instanceof MethodDeclaration);
 
-            case "VariableDeclarationExpr":
-                return (node instanceof VariableDeclarationExpr);
+            case "VariableDeclarator":
+                return (node instanceof VariableDeclarator);
 
             default:
                 System.out.println("ERROR: no support for target type: " + typeToTarget); 
@@ -132,18 +148,21 @@ public class MethodLines extends VoidVisitorAdapter<Object> {
 
                                     ArrayList<String> names = MethodLines.seq ? splitNameByToken(node_name) : new ArrayList<String>(Arrays.asList(node_name));
 
+                                    /*
                                     for (int i=0; i<names.size(); i++) {
                                         String token = names.get(i);
                                         if(!acceptedNames.contains(token)){
                                             rem.add(node);
                                             break;
                                         }
-                                    }
+                                    }*/
 
                                     break;
 
-                                case "VariableDeclarationExpr":
-                                    Range r = node.getRange().orElse(null);
+                                case "VariableDeclarator":
+                                    VariableDeclarator vd = (VariableDeclarator) node;
+
+                                    Range r = vd.getName().getRange().orElse(null);
                                     try {
                                         fr.write(javaFilePath + " : " + typeToTarget +  " : " + r.toString() + "\n");
                                     } catch (IOException e) {
@@ -180,20 +199,17 @@ public class MethodLines extends VoidVisitorAdapter<Object> {
     }
 
     public static void main(String[] args){
-        String inPath = "/data2/edinella/java-all-redist-fs/";
-        Common.outputPath = "/data2/edinella/java-all-redist-g/";
+        //String inPath = "/data2/edinella/java-all-redist-g/training/";
+        String inPath = "/data2/edinella/java-all";
+        Common.outputPath = "/data2/edinella/test-java-all-seq/";
         //Common.outputPath = "/data2/edinella/java-large-clean/";
 
-        String typeToTarget = "VariableDeclarationExpr";
-        //MethodLines.seq = false;
-        //MethodLines.set_clean_names("/home/edinella/clean_names.txt");
 
-        try {
-            setLogPath(Common.outputPath + "log.txt");
-        } catch (IOException e) {
-            System.out.println(Common.outputPath + " can't write to!");
-            return;
-       }
+        String typeToTarget = "MethodDeclaration";
+        //String typeToTarget = "VariableDeclarator";
+        MethodLines.seq = true;
+        MethodLines.set_clean_names("/home/edinella/clean_seqs.txt");
+
 
         File programFolder = new File(inPath);
 
@@ -217,12 +233,6 @@ public class MethodLines extends VoidVisitorAdapter<Object> {
 
         executor.shutdown();
     
-        try { 
-            MethodLines.fr.close();
-            System.out.println("Closed file");
-            return;
-        } catch (IOException e) {
-            System.out.println("Can't close file");
-        }
+        
     }
 }
