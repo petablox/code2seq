@@ -38,10 +38,11 @@ if __name__ == '__main__':
     if config.TRAIN_PATH:
         model.train()
     if config.TEST_PATH and not args.data_path:
-        results, precision, recall, f1, rouge = model.evaluate()
+        results, precision, recall, f1, rouge, loss = model.eval_with_loss()
         print('Accuracy: ' + str(results))
         print('Precision: ' + str(precision) + ', recall: ' + str(recall) + ', F1: ' + str(f1))
         print('Rouge: ', rouge)
+        print("Avg loss: ", loss)
     if args.predict:
         predictor = InteractivePredictor(config, model)
         predictor.predict()

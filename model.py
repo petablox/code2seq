@@ -59,6 +59,66 @@ class Model:
     def close_session(self):
         self.sess.close()
 
+    def eval_with_loss(self):
+        start_time = time.time()
+
+        batch_num = 0
+        sum_loss = 0
+
+        true_positive, false_positive, false_negative = 0, 0, 0
+        total_prediction_batches = 0
+
+        if self.eval_queue is None:
+            self.eval_queue = reader.Reader(subtoken_to_index=self.subtoken_to_index,
+                                            node_to_index=self.node_to_index,
+                                            target_to_index=self.target_to_index,
+                                            config=self.config, is_evaluating=True)
+            reader_output = self.eval_queue.get_output()
+            _, loss = self.build_training_graph(reader_output)
+            self.eval_predicted_indices_op, self.eval_topk_values, _, _ = \
+                self.build_test_graph(reader_output)
+            self.eval_true_target_strings_op = reader_output[reader.TARGET_STRING_KEY]
+
+        self.initialize_session_variables(self.sess)
+        print('Initalized variables')
+        if self.config.LOAD_PATH:
+            self.load_model(self.sess)
+
+        time.sleep(1)
+        print('Started reader...')
+
+        multi_batch_start_time = time.time()
+        for iteration in range(1, (self.config.NUM_EPOCHS // self.config.SAVE_EVERY_EPOCHS) + 1):
+            self.eval_queue.reset(self.sess)
+            try:
+                while True:
+                    batch_num += 1
+                    
+                    batch_loss = self.sess.run([loss])[0]
+                    sum_loss += batch_loss
+
+                    predicted_indices, true_target_strings, top_values = self.sess.run(
+                        [self.eval_predicted_indices_op, self.eval_true_target_strings_op, self.eval_topk_values],
+                    )
+
+                    print('SINGLE BATCH LOSS', batch_loss)
+
+            except tf.errors.OutOfRangeError:
+                self.epochs_trained += self.config.SAVE_EVERY_EPOCHS
+                print('Finished %d epochs' % self.config.SAVE_EVERY_EPOCHS)
+                if self.config.BEAM_WIDTH == 0:
+                    print('Accuracy after %d epochs: %.5f' % (self.epochs_trained, results))
+                else:
+                    print('Accuracy after {} epochs: {}'.format(self.epochs_trained, results))
+                print('After %d epochs: Precision: %.5f, recall: %.5f, F1: %.5f' % (
+                    self.epochs_trained, precision, recall, f1))
+                print('Rouge: ', rouge)
+
+        precision, recall, f1 = self.calculate_results(true_positive, false_positive, false_negative)
+
+        return num_correct_predictions / total_predictions, \
+               precision, recall, f1, rouge, sum_loss / batch_num
+
     def train(self):
         print('Starting training')
         start_time = time.time()
@@ -75,6 +135,7 @@ class Model:
                                           node_to_index=self.node_to_index,
                                           target_to_index=self.target_to_index,
                                           config=self.config)
+
         optimizer, train_loss = self.build_training_graph(self.queue_thread.get_output())
         self.print_hyperparams()
         print('Number of trainable params:',
@@ -339,7 +400,7 @@ class Model:
         path_lengths = input_tensors[reader.PATH_LENGTHS_KEY]
         path_target_lengths = input_tensors[reader.PATH_TARGET_LENGTHS_KEY]
 
-        with tf.variable_scope('model'):
+        with tf.variable_scope('model', reuse=tf.AUTO_REUSE):
             subtoken_vocab = tf.get_variable('SUBTOKENS_VOCAB',
                                              shape=(self.subtoken_vocab_size, self.config.EMBEDDINGS_SIZE),
                                              dtype=tf.float32,
@@ -550,7 +611,7 @@ class Model:
         path_lengths = input_tensors[reader.PATH_LENGTHS_KEY]
         path_target_lengths = input_tensors[reader.PATH_TARGET_LENGTHS_KEY]
 
-        with tf.variable_scope('model', reuse=self.get_should_reuse_variables()):
+        with tf.variable_scope('model', reuse=tf.AUTO_REUSE):
             subtoken_vocab = tf.get_variable('SUBTOKENS_VOCAB',
                                              shape=(self.subtoken_vocab_size, self.config.EMBEDDINGS_SIZE),
                                              dtype=tf.float32, trainable=False)
