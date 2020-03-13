@@ -21,10 +21,11 @@
 #   recommended to use a multi-core machine for the preprocessing 
 #   step and set this value to the number of cores.
 # PYTHON - python3 interpreter alias.
-TRAIN_DIR=/data2/edinella/java-small-clean-seq-c/training
-VAL_DIR=/data2/edinella/java-small-clean-seq-c/validation
-TEST_DIR=/data2/edinella/java-small-clean-seq-c/test
-DATASET_NAME=java-small-clean-seq-c
+PREFIX=/data2/edinella/seq-lim-b/
+TRAIN_DIR=$PREFIX/training
+VAL_DIR=$PREFIX/validation
+TEST_DIR=$PREFIX/test
+DATASET_NAME=seq-lim-b
 MAX_DATA_CONTEXTS=1000
 MAX_CONTEXTS=200
 SUBTOKEN_VOCAB_SIZE=186277

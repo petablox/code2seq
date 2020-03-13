@@ -5,9 +5,10 @@
 # test_data: by default, points to the validation set, since this is the set that
 #   will be evaluated after each training iteration. If you wish to test
 #   on the final (held-out) test set, change 'val' to 'test'.
-type=java-small-clean-seq-c
-dataset_name=java-small-clean-seq-c
-data_dir=data/java-small-clean-seq-c
+
+type=seq-lim-b
+dataset_name=seq-lim-b
+data_dir=data/seq-lim-b
 data=${data_dir}/${dataset_name}
 test_data=${data_dir}/${dataset_name}.val.c2s
 model_dir=models/${type}
