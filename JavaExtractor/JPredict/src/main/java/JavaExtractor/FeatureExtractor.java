@@ -41,7 +41,7 @@ class FeatureExtractor {
         return upStack;
     }
 
-    public ArrayList<ProgramFeatures> extractFeatures(String code) {
+    public ArrayList<ProgramFeatures> extractFeatures(String code, String filePath) {
         CompilationUnit m_CompilationUnit = parseFileWithRetries(code);
         FunctionVisitor functionVisitor = new FunctionVisitor(m_CommandLineValues);
 
@@ -49,7 +49,7 @@ class FeatureExtractor {
 
         ArrayList<MethodContent> methods = functionVisitor.getMethodContents();
 
-        return generatePathFeatures(methods);
+        return generatePathFeatures(methods, filePath);
     }
 
     private CompilationUnit parseFileWithRetries(String code) {
@@ -77,10 +77,10 @@ class FeatureExtractor {
         return parsed;
     }
 
-    private ArrayList<ProgramFeatures> generatePathFeatures(ArrayList<MethodContent> methods) {
+    private ArrayList<ProgramFeatures> generatePathFeatures(ArrayList<MethodContent> methods, String filePath) {
         ArrayList<ProgramFeatures> methodsFeatures = new ArrayList<>();
         for (MethodContent content : methods) {
-            ProgramFeatures singleMethodFeatures = generatePathFeaturesForFunction(content);
+            ProgramFeatures singleMethodFeatures = generatePathFeaturesForFunction(content, filePath);
             if (!singleMethodFeatures.isEmpty()) {
                 methodsFeatures.add(singleMethodFeatures);
             }
@@ -88,9 +88,9 @@ class FeatureExtractor {
         return methodsFeatures;
     }
 
-    private ProgramFeatures generatePathFeaturesForFunction(MethodContent methodContent) {
+    private ProgramFeatures generatePathFeaturesForFunction(MethodContent methodContent, String filePath) {
         ArrayList<Node> functionLeaves = methodContent.getLeaves();
-        ProgramFeatures programFeatures = new ProgramFeatures(methodContent.getName());
+        ProgramFeatures programFeatures = new ProgramFeatures(methodContent.getName(), filePath);
 
         for (int i = 0; i < functionLeaves.size(); i++) {
             for (int j = i + 1; j < functionLeaves.size(); j++) {

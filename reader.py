@@ -4,6 +4,7 @@ import tensorflow as tf
 
 from common import Common
 
+F_NAME_KEY = "F_NAME_KEY"
 TARGET_INDEX_KEY = 'TARGET_INDEX_KEY'
 TARGET_STRING_KEY = 'TARGET_STRING_KEY'
 TARGET_LENGTH_KEY = 'TARGET_LENGTH_KEY'
@@ -34,7 +35,7 @@ class Reader:
         self.is_evaluating = is_evaluating
 
         self.context_pad = '{},{},{}'.format(Common.PAD, Common.PAD, Common.PAD)
-        self.record_defaults = [[self.context_pad]] * (self.config.DATA_NUM_CONTEXTS + 1)
+        self.record_defaults = [[self.context_pad]] * (self.config.DATA_NUM_CONTEXTS + 2)
 
         self.subtoken_table = Reader.get_subtoken_table(subtoken_to_index)
         self.target_table = Reader.get_target_table(target_to_index)
@@ -69,14 +70,16 @@ class Reader:
 
     def process_from_placeholder(self, row):
         parts = tf.io.decode_csv(row, record_defaults=self.record_defaults, field_delim=' ', use_quote_delim=False)
-        return self.process_dataset(*parts)
+        return self.process_dataset(*parts, True)
 
     def process_dataset(self, *row_parts):
         row_parts = list(row_parts)
-        word = row_parts[0]  # (, )
+        fname = row_parts[0]
+
+        word = row_parts[1]  # (, )
 
         if not self.is_evaluating and self.config.RANDOM_CONTEXTS:
-            all_contexts = tf.stack(row_parts[1:])
+            all_contexts = tf.stack(row_parts[2:])
             all_contexts_padded = tf.concat([all_contexts, [self.context_pad]], axis=-1)
             index_of_blank_context = tf.where(tf.equal(all_contexts_padded, self.context_pad))
             num_contexts_per_example = tf.reduce_min(index_of_blank_context)
@@ -86,7 +89,7 @@ class Reader:
             rand_indices = tf.random_shuffle(tf.range(safe_limit))[:self.config.MAX_CONTEXTS]
             contexts = tf.gather(all_contexts, rand_indices)  # (max_contexts,)
         else:
-            contexts = row_parts[1:(self.config.MAX_CONTEXTS + 1)]  # (max_contexts,)
+            contexts = row_parts[2:(self.config.MAX_CONTEXTS + 1)]  # (max_contexts,)
 
         # contexts: (max_contexts, )
         split_contexts = tf.string_split(contexts, delimiter=',', skip_empty=False)
@@ -166,7 +169,7 @@ class Reader:
                 PATH_TARGET_INDICES_KEY: path_target_indices, VALID_CONTEXT_MASK_KEY: valid_contexts_mask,
                 PATH_SOURCE_LENGTHS_KEY: path_source_lengths, PATH_LENGTHS_KEY: path_lengths,
                 PATH_TARGET_LENGTHS_KEY: path_target_lengths, PATH_SOURCE_STRINGS_KEY: path_source_strings,
-                PATH_STRINGS_KEY: path_strings, PATH_TARGET_STRINGS_KEY: path_target_strings
+                PATH_STRINGS_KEY: path_strings, PATH_TARGET_STRINGS_KEY: path_target_strings, F_NAME_KEY: fname
                 }
 
     def reset(self, sess):
@@ -183,6 +186,7 @@ class Reader:
             if self.config.SAVE_EVERY_EPOCHS > 1:
                 dataset = dataset.repeat(self.config.SAVE_EVERY_EPOCHS)
             dataset = dataset.shuffle(self.config.SHUFFLE_BUFFER_SIZE, reshuffle_each_iteration=True)
+
         dataset = dataset.apply(tf.data.experimental.map_and_batch(
             map_func=self.process_dataset, batch_size=self.batch_size,
             num_parallel_batches=self.config.READER_NUM_PARALLEL_BATCHES))

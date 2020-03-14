@@ -42,7 +42,7 @@ class Config:
         self.SAVE_EVERY_EPOCHS = 0
         self.PATIENCE = 0
         self.BATCH_SIZE = 0
-        self.TEST_BATCH_SIZE = 0
+        self.TEST_BATCH_SIZE = 1
         self.READER_NUM_PARALLEL_BATCHES = 0
         self.SHUFFLE_BUFFER_SIZE = 0
         self.CSV_BUFFER_SIZE = None
@@ -76,7 +76,7 @@ class Config:
         config.SAVE_EVERY_EPOCHS = 100
         config.PATIENCE = 200
         config.BATCH_SIZE = 7
-        config.TEST_BATCH_SIZE = 7
+        config.TEST_BATCH_SIZE = 1
         config.READER_NUM_PARALLEL_BATCHES = 1
         config.SHUFFLE_BUFFER_SIZE = 10
         config.CSV_BUFFER_SIZE = None
