@@ -33,8 +33,9 @@ def process_file(file_path, data_file_role, dataset_name, max_contexts, max_data
         with open(file_path, 'r') as file:
             for line in file:
                 parts = line.rstrip('\n').split(' ')
-                target_name = parts[0]
-                contexts = parts[1:]
+                fname = parts[0]
+                target_name = parts[1]
+                contexts = parts[2:]
 
                 if len(contexts) > max_unfiltered:
                     max_unfiltered = len(contexts)
@@ -47,7 +48,7 @@ def process_file(file_path, data_file_role, dataset_name, max_contexts, max_data
 
                 csv_padding = " " * (max_data_contexts - len(contexts))
                 total += 1
-                outfile.write(target_name + ' ' + " ".join(contexts) + csv_padding + '\n')
+                outfile.write(fname + ' ' + target_name + ' ' + " ".join(contexts) + csv_padding + '\n')
 
     print('File: ' + data_file_path)
     print('Average total contexts: ' + str(float(sum_total) / total))
@@ -75,6 +76,8 @@ if __name__ == '__main__':
                         help="path to test data file", required=True)
     parser.add_argument("-vd", "--val_data", dest="val_data_path",
                         help="path to validation data file", required=True)
+    parser.add_argument("-td", "--trans_data", dest="trans_data_paths", nargs="+",
+                        help="paths to trans data files", required=True)
     parser.add_argument("-mc", "--max_contexts", dest="max_contexts", default=200,
                         help="number of max contexts to keep in test+validation", required=False)
     parser.add_argument("-mdc", "--max_data_contexts", dest="max_data_contexts", default=1000,
@@ -96,6 +99,7 @@ if __name__ == '__main__':
     train_data_path = args.train_data_path
     test_data_path = args.test_data_path
     val_data_path = args.val_data_path
+    trans_data_paths = args.trans_data_paths
     subtoken_histogram_path = args.subtoken_histogram
     node_histogram_path = args.node_histogram
 
@@ -110,7 +114,7 @@ if __name__ == '__main__':
     print('target vocab size: ', len(target_to_count))
 
     num_training_examples = 0
-    for data_file_path, data_role in zip([test_data_path, val_data_path, train_data_path], ['test', 'val', 'train']):
+    for data_file_path, data_role in zip([test_data_path, val_data_path, train_data_path] + trans_data_paths, ['test', 'val', 'train', 'train-a', 'train-b', 'train-c', 'train-d', 'train-e']):
         num_examples = process_file(file_path=data_file_path, data_file_role=data_role, dataset_name=args.output_name,
                                     max_contexts=int(args.max_contexts), max_data_contexts=int(args.max_data_contexts))
         if data_role == 'train':

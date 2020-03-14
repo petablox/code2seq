@@ -7,17 +7,20 @@ import java.util.stream.Collectors;
 
 public class ProgramFeatures {
     private final String name;
+    private final String filename;
 
     private final ArrayList<ProgramRelation> features = new ArrayList<>();
 
-    public ProgramFeatures(String name) {
+    public ProgramFeatures(String name, String filename) {
         this.name = name;
+        this.filename = filename;
     }
 
     @SuppressWarnings("StringBufferReplaceableByString")
     @Override
     public String toString() {
         StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(filename).append(" ");
         stringBuilder.append(name).append(" ");
         stringBuilder.append(features.stream().map(ProgramRelation::toString).collect(Collectors.joining(" ")));
 

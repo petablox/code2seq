@@ -21,10 +21,11 @@
 #   recommended to use a multi-core machine for the preprocessing 
 #   step and set this value to the number of cores.
 # PYTHON - python3 interpreter alias.
-TRAIN_DIR=/data2/edinella/java-small-clean-seq-c/training
-VAL_DIR=/data2/edinella/java-small-clean-seq-c/validation
-TEST_DIR=/data2/edinella/java-small-clean-seq-c/test
-DATASET_NAME=java-small-clean-seq-c
+PREFIX=/data2/edinella/seq-lim-fs
+TRAIN_DIR=$PREFIX/training
+VAL_DIR=$PREFIX/validation
+TEST_DIR=$PREFIX/test
+DATASET_NAME=seq-lim
 MAX_DATA_CONTEXTS=1000
 MAX_CONTEXTS=200
 SUBTOKEN_VOCAB_SIZE=186277
@@ -51,22 +52,30 @@ echo "Extracting paths from training set..."
 ${PYTHON} JavaExtractor/extract.py --dir ${TRAIN_DIR} --max_path_length 8 --max_path_width 2 --num_threads ${NUM_THREADS} --jar ${EXTRACTOR_JAR} | shuf > ${TRAIN_DATA_FILE} 2>> error_log.txt
 echo "Finished extracting paths from training set"
 
+for i in a b c d e
+do
+    echo "Extracting path from ${TRAIN_DIR}-$i"
+    ${PYTHON} JavaExtractor/extract.py --dir ${TRAIN_DIR}-$i --max_path_length 8 --max_path_width 2 --num_threads ${NUM_THREADS} --jar ${EXTRACTOR_JAR} | shuf > ${DATASET_NAME}-$i.train.raw.txt 2>> error_log.txt
+    echo "Finished extracting paths from ${TRAIN_DIR}-$i"
+done
+
 TARGET_HISTOGRAM_FILE=data/${DATASET_NAME}/${DATASET_NAME}.histo.tgt.c2s
 SOURCE_SUBTOKEN_HISTOGRAM=data/${DATASET_NAME}/${DATASET_NAME}.histo.ori.c2s
 NODE_HISTOGRAM_FILE=data/${DATASET_NAME}/${DATASET_NAME}.histo.node.c2s
 
 echo "Creating histograms from the training data"
-cat ${TRAIN_DATA_FILE} | cut -d' ' -f1 | tr '|' '\n' | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${TARGET_HISTOGRAM_FILE}
-cat ${TRAIN_DATA_FILE} | cut -d' ' -f2- | tr ' ' '\n' | cut -d',' -f1,3 | tr ',|' '\n' | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${SOURCE_SUBTOKEN_HISTOGRAM}
-cat ${TRAIN_DATA_FILE} | cut -d' ' -f2- | tr ' ' '\n' | cut -d',' -f2 | tr '|' '\n' | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${NODE_HISTOGRAM_FILE}
+cat ${TRAIN_DATA_FILE} | cut -d' ' -f2 | tr '|' '\n' | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${TARGET_HISTOGRAM_FILE}
+cat ${TRAIN_DATA_FILE} | cut -d' ' -f3- | tr ' ' '\n' | cut -d',' -f1,3 | tr ',|' '\n' | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${SOURCE_SUBTOKEN_HISTOGRAM}
+cat ${TRAIN_DATA_FILE} | cut -d' ' -f3- | tr ' ' '\n' | cut -d',' -f2 | tr '|' '\n' | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${NODE_HISTOGRAM_FILE}
 
 ${PYTHON} preprocess.py --train_data ${TRAIN_DATA_FILE} --test_data ${TEST_DATA_FILE} --val_data ${VAL_DATA_FILE} \
   --max_contexts ${MAX_CONTEXTS} --max_data_contexts ${MAX_DATA_CONTEXTS} --subtoken_vocab_size ${SUBTOKEN_VOCAB_SIZE} \
+  --trans_data ${DATASET_NAME}-a.train.raw.txt ${DATASET_NAME}-b.train.raw.txt ${DATASET_NAME}-c.train.raw.txt ${DATASET_NAME}-d.train.raw.txt ${DATASET_NAME}-e.train.raw.txt \
   --target_vocab_size ${TARGET_VOCAB_SIZE} --subtoken_histogram ${SOURCE_SUBTOKEN_HISTOGRAM} \
   --node_histogram ${NODE_HISTOGRAM_FILE} --target_histogram ${TARGET_HISTOGRAM_FILE} --output_name data/${DATASET_NAME}/${DATASET_NAME}
     
 # If all went well, the raw data files can be deleted, because preprocess.py creates new files 
 # with truncated and padded number of paths for each example.
+
 rm ${TRAIN_DATA_FILE} ${VAL_DATA_FILE} ${TEST_DATA_FILE} ${TARGET_HISTOGRAM_FILE} ${SOURCE_SUBTOKEN_HISTOGRAM} \
   ${NODE_HISTOGRAM_FILE}
-

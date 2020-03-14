@@ -75,7 +75,6 @@ class Model:
                                           node_to_index=self.node_to_index,
                                           target_to_index=self.target_to_index,
                                           config=self.config)
-        optimizer, train_loss = self.build_training_graph(self.queue_thread.get_output())
         self.print_hyperparams()
         print('Number of trainable params:',
               np.sum([np.prod(v.get_shape().as_list()) for v in tf.trainable_variables()]))
@@ -84,18 +83,21 @@ class Model:
         if self.config.LOAD_PATH:
             self.load_model(self.sess)
 
+
+        optimizer, train_loss, trans_idx = self.build_training_graph_wrapper(self.queue_thread.get_output())
+
         time.sleep(1)
         print('Started reader...')
 
         multi_batch_start_time = time.time()
         for iteration in range(1, (self.config.NUM_EPOCHS // self.config.SAVE_EVERY_EPOCHS) + 1):
-            self.queue_thread.reset(self.sess)
+            self.queue_thread.reset(self.sess, trans_idx)
             try:
                 while True:
                     batch_num += 1
                     _, batch_loss = self.sess.run([optimizer, train_loss])
                     sum_loss += batch_loss
-                    # print('SINGLE BATCH LOSS', batch_loss)
+                    #print('SINGLE BATCH LOSS', batch_loss)
                     if batch_num % self.num_batches_to_log == 0:
                         self.trace(sum_loss, batch_num, multi_batch_start_time)
                         sum_loss = 0
@@ -178,7 +180,7 @@ class Model:
             total_predictions = 0
             total_prediction_batches = 0
             true_positive, false_positive, false_negative = 0, 0, 0
-            self.eval_queue.reset(self.sess)
+            self.eval_queue.reset(self.sess,0)
             start_time = time.time()
 
             try:
@@ -223,13 +225,14 @@ class Model:
             output_file.write(str(num_correct_predictions / total_predictions) + '\n')
             # Common.compute_bleu(ref_file_name, predicted_file_name)
 
+        print(true_positive, false_positive, false_negative)
         elapsed = int(time.time() - eval_start_time)
         precision, recall, f1 = self.calculate_results(true_positive, false_positive, false_negative)
         files_rouge = FilesRouge(predicted_file_name, ref_file_name)
-        rouge = files_rouge.get_scores(avg=True, ignore_empty=True)
+        #srouge = files_rouge.get_scores(avg=True, ignore_empty=True)
         print("Evaluation time: %sh%sm%ss" % ((elapsed // 60 // 60), (elapsed // 60) % 60, elapsed % 60))
         return num_correct_predictions / total_predictions, \
-               precision, recall, f1, rouge
+               precision, recall, f1, None
 
     def update_correct_predictions(self, num_correct_predictions, output_file, results):
         for original_name, predicted in results:
@@ -328,6 +331,7 @@ class Model:
         # print(accuracy_message)
         print(throughput_message)
 
+    
     def build_training_graph(self, input_tensors):
         target_index = input_tensors[reader.TARGET_INDEX_KEY]
         target_lengths = input_tensors[reader.TARGET_LENGTH_KEY]
@@ -339,7 +343,7 @@ class Model:
         path_lengths = input_tensors[reader.PATH_LENGTHS_KEY]
         path_target_lengths = input_tensors[reader.PATH_TARGET_LENGTHS_KEY]
 
-        with tf.variable_scope('model'):
+        with tf.variable_scope('model', reuse=tf.AUTO_REUSE):
             subtoken_vocab = tf.get_variable('SUBTOKENS_VOCAB',
                                              shape=(self.subtoken_vocab_size, self.config.EMBEDDINGS_SIZE),
                                              dtype=tf.float32,
@@ -395,6 +399,26 @@ class Model:
             self.saver = tf.train.Saver(max_to_keep=10)
 
         return train_op, loss
+
+    def build_training_graph_wrapper(self, input_tensor_lst):
+        raw_losses = []
+        losses = []
+        train_ops = []
+        count = 0
+        for input_tensors in input_tensor_lst:
+            train_op, loss = self.build_training_graph(input_tensors)
+            self.initialize_session_variables(self.sess)
+            self.queue_thread.reset(self.sess, count)
+            #time.sleep(1)
+            batch_loss = self.sess.run(loss)
+            raw_losses.append(batch_loss)
+            print(batch_loss)
+            losses.append(loss)
+            train_ops.append(train_op)
+            count += 1
+
+        max_idx = raw_losses.index(max(raw_losses))
+        return train_ops[max_idx], losses[max_idx], max_idx
 
     def decode_outputs(self, target_words_vocab, target_input, batch_size, batched_contexts, valid_mask,
                        is_evaluating=False):
@@ -516,6 +540,8 @@ class Model:
                                             ids=nodes_input)  # (batch, max_contexts, max_path_length+1, dim)
         target_word_embed = tf.nn.embedding_lookup(params=subtoken_vocab,
                                                    ids=target_input)  # (batch, max_contexts, max_name_parts, dim)
+
+        
 
         source_word_mask = tf.expand_dims(
             tf.sequence_mask(path_source_lengths, maxlen=self.config.MAX_NAME_PARTS, dtype=tf.float32),
